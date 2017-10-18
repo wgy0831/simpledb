@@ -3,17 +3,12 @@
 
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include "node.h"
 namespace simpledb {
-typedef unsigned int uint;
 const uint M = 4;
-struct Node {
-	uint cpt;
-	uint high;
-	uint keys[M];
-	uint addr[M];
-};
 class Disk;
 class Tree {
 private:

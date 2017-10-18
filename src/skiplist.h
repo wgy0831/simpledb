@@ -7,27 +7,26 @@
 
 namespace simpledb {
 const uint32_t MAX_LEVEL = 12;
+const uint32_t SIZE = 0x800001;
 class Skiplist {
 	private:
-		struct Node {
-			uint32_t key;
+		struct Node{
+			uint64_t key;
 			uint32_t value;
-			Node *forward[1];
-		};
-		uint32_t level;
-		Node *header, *cur[MAX_LEVEL];
-		size_t size;
+			uint32_t forward[MAX_LEVEL];
+		}mem[SIZE], *header;
+		uint32_t cur[MAX_LEVEL];
+		int32_t level, head, bottom;
 		std::default_random_engine rand;
 		std::random_device rd;
-		void NewNode(const uint32_t &level, Node *&p);
+		uint32_t NewNode();
 		uint32_t randomlevel();
 	public:
 		uint32_t getfirstkey();
 		Skiplist();
-		~Skiplist();
-		uint32_t search(const uint32_t &key);
-		void insert(const uint32_t &key, const uint32_t &value);
-		void clear(const uint32_t &key);
+		uint32_t search(const uint64_t &key);
+		void insert(const uint64_t &key, const uint32_t &value);
+		void clear(const uint64_t &key);
 };
 }
 

@@ -2,6 +2,14 @@
 namespace simpledb {
 Disk::Disk() {
 	index.open("index", std::fstream::binary | std::fstream::in | std::fstream::out);
+	char *sd = "dataxx";
+	for(size_t i = 0; i < 0x10; ++i) {
+		sd[4] = i/10 + '0';
+		sd[5] = i%10 + '0';
+		data[i].open(sd, std::fstream::binary | std::fstream::in | std::fstream::out);
+	}
+	dp = 0;
+	tail = 0;
 	index.seekg(0, index.end);
 	uint filesize = index.tellg();
 	cache = new std::pair<uint, Node>[cachesize];
@@ -70,6 +78,41 @@ Node *Disk::search(uint id, bool change) {
 	c_using[offset] = true;
 	return &(cache[offset].second);
 }
+void Disk::add_data(size_t n, uint32_t addr[], char *buf) {
+	//n is less than MAX_BLOCK
+	uint32_t offset = data[dp].tellp();
+	if (tail + n > MAX_BLOCK) {
+		size_t fill = MAX_BLOCK - tail;
+		data[dp].write(buf, addr[fill - 1]);
+		addr[0] = (dp << 28) | offset;
+		for(size_t i = 1; i < fill; ++i)
+			addr[i] = (dp << 28) | (addr[i-1] + offset);
+		++dp;
+		tail = 0;
+		n -= fill;
+		buf += addr[fill - 1];
+		addr += fill;
+		offset = 0;
+	}
+	data[dp].write(buf, addr[n-1]);
+	addr[0] = (dp << 28) | offset;
+	for(size_t i = 1; i < n; ++i)
+		addr[i] = (dp << 28) | (addr[i-1] + offset);
+	if (tail == MAX_BLOCK) {
+		++dp;
+		tail = 0;
+	}
+	return;
+}
+void Disk::search_data(uint32_t addr, char *buf) {
+	size_t tdp = (addr >> 28) && 0xf;
+	addr = addr & 0xfffffff;
+	data[tdp].seekg(addr, data[tdp].beg);
+	size_t size;
+	data[tdp] >> size;
+	data[tdp].read(buf, size);
+}
+	
 Disk::~Disk() {
 	for(uint i = 0; i < cachesize; ++i)
 		if (dirty[i]) {
@@ -82,5 +125,7 @@ Disk::~Disk() {
 	delete [] dirty;
 	diskmap.clear();
 	index.close();
+	for(size_t i = 0; i < 0x1000; ++i)
+		data[i].close();
 }
 }

@@ -3,80 +3,68 @@
 namespace simpledb {
 Skiplist::Skiplist():rand(rd()) {
 	level = 0;
-	NewNode(MAX_LEVEL, header);
+	head = 1;
+	bottom = 1;
+	header = &mem[0];
 	header->key = 0;
 	for(uint32_t i = 0; i < MAX_LEVEL; ++i){
-		header->forward[i] = NULL;
-		cur[i] = header;
+		header->forward[i] = SIZE;
+		cur[i] = 0;
 	}
-	size = 0;
 }
-void Skiplist::NewNode(const uint32_t &level, Node *&p) {
-	size_t size = sizeof(Node) + (level-1) * sizeof(Node *);
-	p = (Node *)malloc(size);
+uint32_t Skiplist::NewNode() {
+	uint32_t re = head%(SIZE-1)+1;
+	head = re;
+	return re;
 }
 uint32_t Skiplist::randomlevel() {
 	uint32_t level = 0;
 	while(level < MAX_LEVEL && (rand() & 0x3) == 0) ++level;
 	return level;
 }
-uint32_t Skiplist::search(const uint32_t &key) {
+uint32_t Skiplist::search(const uint64_t &key) {
 	Node *x = header;
 	for(int i = level-1; i >= 0; --i) {
-		while(x->forward[i] != NULL && x->forward[i]->key <= key)
-			x = x->forward[i];
+		while(x->forward[i] != SIZE && mem[x->forward[i]].key <= key)
+			x = &mem[x->forward[i]];
 		if (x->key == key) return x->value;
 	}
-	return 0;
+	return -1;
 }
-void Skiplist::insert(const uint32_t &key,const uint32_t &value) {
+void Skiplist::insert(const uint64_t &key,const uint32_t &value) {
 	uint32_t level = randomlevel();
 	if (level > this->level) {
 		level = ++this->level;
-		cur[level] = header;
+		cur[level] = 0;
 	}
-	Node *newNode;
-	NewNode(level, newNode);
+	uint32_t addr = NewNode();
+	Node *newNode = &mem[addr];
 	newNode->key = key;
 	newNode->value = value;
 	for(uint32_t i = 0; i < level; ++i) {
-		cur[i]->forward[i] = newNode;
-		newNode->forward[i] = NULL;
-		cur[i] = newNode;
+		mem[cur[i]].forward[i] = addr;
+		newNode->forward[i] = SIZE;
+		cur[i] = addr;
 	}
-	++size;
 }
-void Skiplist::clear(const uint32_t &key) {
+void Skiplist::clear(const uint64_t &key) {
+		//bottom = (bottom+(SIZE >> 1)-1) % (SIZE - 1) + 1;
 	Node *x = header, *xp;
-	for(uint32_t i = level-1; i >= 0; --i) {
-		while(x->forward[i] != NULL && x->forward[i]->key <= key)
-			x = x->forward[i];
+	for(int32_t i = level-1; i >= 0; --i) {
+		while(x->forward[i] != SIZE && mem[x->forward[i]].key <= key)
+			x = &mem[x->forward[i]];
 		if (x->key == key) {
-			for(uint32_t j = i; j >= 0; ++j)
+			for(int32_t j = i; j >= 0; ++j)
 				header->forward[j] = x->forward[j];
 			break;
 		}
-		x = x->forward[i];
-		header->forward[i] = x;
+		header->forward[i] = x->forward[i];
 	}
-
-	x = header->forward[0];
-	while(x->key <= key) {
-		xp = x->forward[0];
-		free(x);
-		x = xp;
-	}
+	bottom = x->forward[0];
 }
 uint32_t Skiplist::getfirstkey() {
-	if (header->forward[0] != NULL)
-		return header->forward[0]->key;
+	if (header->forward[0] != SIZE)
+		return mem[header->forward[0]].key;
 	else return 0;
-Skiplist::~Skiplist() {
-	Node *x = header, *xp;
-	while(x != NULL) {
-		xp = x->forward[0];
-		free(x);
-		x = xp;
-	}
 }
 }

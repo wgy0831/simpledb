@@ -2,6 +2,8 @@
 #include <cstdint>
 
 int main() {
-	uint64_t x = 2147483648;
+	double x = 3.2;
 	char *d = (char *)&x;
+	d[0] = 0;
+	printf("%.20lf", x);
 }
