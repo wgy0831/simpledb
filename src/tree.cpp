@@ -1,72 +1,68 @@
-#include "disk.h"
 #include "tree.h"
 namespace simpledb {
+class Disk;
 Tree::Tree(Disk *outdisk) {
 	disk = outdisk;
-	rootn = disk->getroot();
 }
-void Tree::gethigher(uint &rn, Node *&r) {
-	uint pn;
+void Tree::gethigher(addr_t &rn, Node *&r) {
+	addr_t pn;
 	Node *p = disk->newNode(pn);
 	p->high = r->high + 1;
 	p->keys[0] = r->keys[0];
 	p->addr[0] = rn;
-	p->cpt = 1;
 	disk->release(rn);
 	rn = pn;
 	r = p;
 }
-void Tree::fill(uint &rn, uint &n, uint maxh) {
-	Node *r = disk->search(rn, true);
+void Tree::fill(addr_t &rn, uint32_t &n, const uint32_t &maxh) {
+	Node *r = NULL;
+	uint32_t cpt = 1;
 	while (n > 0) {
-		if (r != NULL && r->high != 1) {
-				fill(r->addr[r->cpt], n, r->high-1);
-				disk->release(r->addr[r->cpt]);
-				if (n == 0) return;
-				++r->cpt;
-				if (r->cpt == M) {
-					if (r->high < maxh)
-						gethigher(rn, r);
-					else return;
-				}
-				r->keys[r->cpt] = *(this->keys);
+		if (r != NULL) {
+			fill(r->addr[cpt], n, r->high-1);
+			disk->release(r->addr[cpt]);
+			++cpt;
+			if (n == 0) return;
+			if (cpt == M) {
+				if (r->high < maxh)
+					gethigher(rn, r);
+				else return;
+			}
+			r->keys[cpt] = *(this->keys);
 		}
 		else {
-			if (r == NULL) {
-				r = disk->newNode(rn);
-				r->high = 1;
-				r->cpt = 0;
-			}
-			uint cpt = r->cpt, t = M  < cpt + n ? M : cpt + n;
-			for(uint i = cpt; i < t; ++i) {
+			r = disk->newNode(rn);
+			r->high = 1;
+			for(uint32_t i = 0; i < M; ++i) {
 				r->keys[i] = *(this->keys++);
 				r->addr[i] = *(this->addr++);
 			}
-			n -= t - cpt;
-			r->cpt = t;
+			n -= M;
 			if (n == 0) {
 				return;
 			}
-			if (r->cpt == M) {
-				if(maxh > 1) {
-					gethigher(rn, r);
-					r->keys[r->cpt] = *(this->keys);
-				}
-			else return;
+			if(maxh > 1) {
+				gethigher(rn, r);
+				r->keys[1] = *(this->keys);
 			}
+			else return;
 		}
 	}
 }
-void Tree::add(uint n, uint keys[], uint addr[]) {
+addr_t Tree::build(uint64_t keys[], uint32_t addr[]) {
 	this->keys = keys;
 	this->addr = addr;
-	fill(rootn, n, 0xffffffff);
+	uint32_t buildsize = BUILDSIZE;
+	addr_t rn = 0;
+	//disk.newNode(rn);
+	fill(rn, buildsize, INITHIGH);
+	return rn;
 }
-uint Tree::searchNode(uint rn, uint &key) {
+addr_t Tree::searchNode(addr_t rn, uint64_t key, const uint32_t &cpt) {
 	Node *r = disk->search(rn, false);
-	uint left, right, mid, result;
+	uint32_t left, right, mid, result;
 	left = 0;
-	right = r->high == 1 ? r->cpt : r->cpt+1;
+	right = cpt;
 	mid = (left + right) >> 1;
 	while (left + 1 != right) {
 		if (key < r->keys[mid])
@@ -79,14 +75,26 @@ uint Tree::searchNode(uint rn, uint &key) {
 		result = (uint)r->addr[left];
 	}
 	else {
-		result = searchNode(r->addr[left], key);
+		result = searchNode(r->addr[left], key, M);
 	}
 	disk->release(rn);
 	return result;
 }
-uint Tree::searchNode(uint &key) {
-	return searchNode(rootn, key);
-}
+void Tree::add(addr_t &root, addr_t child, uint32_t &cpt) {
+	Node *r = disk->search(root, true), *c = disk->search(child, false);
+	if(r == NULL) {
+		root = child;
+		r = c;
+		gethigher(root, r);
+		cpt = 1;
+	}
+	else {
+		r->keys[cpt] = c->keys[0];
+		r->addr[cpt] = child;
+		++cpt;
+	}
+	disk.release(root);
+	disk.release(child);
 }
 /*
 uint keys[100000], addr[100000];

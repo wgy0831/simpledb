@@ -1,10 +1,13 @@
 #ifndef _NODE_H_
 #define _NODE_H_
 #include <cstdint>
+namespace simpledb {
+const uint32_t M = 4;
 struct Node {
-	uint8_t cpt;
 	uint32_t high;
 	uint64_t keys[M];
-	uint64_t addr[M];
+	uint32_t addr[M];
 };
+typedef uint32_t addr_t;
+}
 #endif
