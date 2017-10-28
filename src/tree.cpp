@@ -1,6 +1,5 @@
-#include "tree.h"
+#include "disk.h"
 namespace simpledb {
-class Disk;
 Tree::Tree(Disk *outdisk) {
 	disk = outdisk;
 }
@@ -58,7 +57,7 @@ addr_t Tree::build(uint64_t keys[], uint32_t addr[]) {
 	fill(rn, buildsize, INITHIGH);
 	return rn;
 }
-addr_t Tree::searchNode(addr_t rn, uint64_t key, const uint32_t &cpt) {
+addr_t Tree::searchNode(addr_t rn, uint64_t &key, const uint32_t &cpt) {
 	Node *r = disk->search(rn, false);
 	uint32_t left, right, mid, result;
 	left = 0;
@@ -72,7 +71,7 @@ addr_t Tree::searchNode(addr_t rn, uint64_t key, const uint32_t &cpt) {
 	}
 	if (r->high == 1) {
 		key = r->keys[left];
-		result = (uint)r->addr[left];
+		result = (addr_t)r->addr[left];
 	}
 	else {
 		result = searchNode(r->addr[left], key, M);
@@ -93,8 +92,9 @@ void Tree::add(addr_t &root, addr_t child, uint32_t &cpt) {
 		r->addr[cpt] = child;
 		++cpt;
 	}
-	disk.release(root);
-	disk.release(child);
+	disk->release(root);
+	disk->release(child);
+}
 }
 /*
 uint keys[100000], addr[100000];

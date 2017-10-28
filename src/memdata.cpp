@@ -30,7 +30,7 @@ Memmanager::Memmanager(const uint32_t &argc, const char *s) {
 		}
 	}
 }
-Block *search(const uint64_t &timestamp, uint32_t &addr) {
+Block *Memmanager::search(const uint64_t &timestamp, uint32_t &addr) {
 	if (list.getfirstkey() > timestamp)
 		return NULL;
 	addr = list.search(timestamp);
@@ -42,7 +42,7 @@ Block *search(const uint64_t &timestamp, uint32_t &addr) {
 void Memmanager::insert(const uint64_t &timestamp, ...) {
 	va_list vl;
 	va_start(vl, timestamp);
-	((uint64_t *)(data[bottom].column[0]))[tail] = timestamp;
+	((uint64_t *)(data[bottom].column[0]))[data[bottom].tail] = timestamp;
 	uint32_t &tail = data[bottom].tail;
 	for(uint32_t i = 1; i < Block::argc; ++i) {
 	   switch (Block::fmt[i]) {	
@@ -53,10 +53,10 @@ void Memmanager::insert(const uint64_t &timestamp, ...) {
 			   ((double *)(data[bottom].column[i]))[tail] = va_arg(vl, double);
 			   break;
 		   case 'b':
-			   ((bool *)(data[bottom].column[i]))[tail] = va_arg(vl, bool);
+			   ((bool *)(data[bottom].column[i]))[tail] = va_arg(vl, int);
 			   break;
 		   case 's':
-			   ((char **)(data[bottom].column[i]))[tail] = va_arg(vl, char **);
+			   ((char **)(data[bottom].column[i]))[tail] = va_arg(vl, char *);
 			   break;
 	   }
 	}
@@ -68,9 +68,8 @@ void Memmanager::insert(const uint64_t &timestamp, ...) {
 	};
 	va_end(vl);
 }
-size_t Memmanager::compress(const double arr[], char *&buf) {
+uint32_t Memmanager::compress(const double arr[], char *&buf) {
 	char *beg = buf;
-	uint64_t len = 0;
 	double stage = arr[0];
 	long long *sb = (long long *)&stage;
 	long long re;
@@ -94,7 +93,7 @@ size_t Memmanager::compress(const double arr[], char *&buf) {
 char inline get3bit(int64_t x, char n) {
 	return (x & (0x7 << n)) >> n; 
 }
-size_t Memmanager::compress(const uint64_t arr[], char *&buf) {
+uint32_t Memmanager::compress(const uint64_t arr[], char *&buf) {
 	char *beg = buf;
 	uint64_t sum = 0, stage = arr[0];
 	for (size_t i = 1; i < BLOCK_SIZE; ++i)
@@ -130,7 +129,7 @@ size_t Memmanager::compress(const uint64_t arr[], char *&buf) {
 	if (f) ++buf;
 	return buf - beg;
 }
-size_t Memmanager::compress(const bool arr[], char *&buf) {
+uint32_t Memmanager::compress(const bool arr[], char *&buf) {
 	char p = 0, *beg = buf;
 	*buf = 0;
 	for(size_t i = 0; i < BLOCK_SIZE; ++i) {
@@ -145,7 +144,7 @@ size_t Memmanager::compress(const bool arr[], char *&buf) {
 	if (p != 0) ++buf;
 	return buf - beg;	
 }
-size_t Memmanager::compress(const char *arr[], char *&buf) {
+uint32_t Memmanager::compress(char *arr[], char *&buf) {
 	size_t re = 0;
 	for(size_t i = 0; i < BLOCK_SIZE; ++i) {
 		size_t len = strlen(arr[i]) + 1;
@@ -155,21 +154,21 @@ size_t Memmanager::compress(const char *arr[], char *&buf) {
 	}
 	return re;
 }
-size_t Memmanager::compressblock(const Block *b, char *buf) {
+uint32_t Memmanager::compressblock(const Block *b, char *buf) {
 	size_t re = 0;
 	for(size_t i = 0; i < Block::argc; ++i) {
 		switch (Block::fmt[i]) {	
 		   case 'd':
-			   re += compress((uint32_t *)(b.column[i]), buf);
+			   re += compress((uint64_t *)(b->column[i]), buf);
 			   break;
 		   case 'f':
-			   re += compress((double *)(b.column[i]), buf);
+			   re += compress((double *)(b->column[i]), buf);
 			   break;
 		   case 'b':
-			   re += compress((bool *)(b.column[i]), buf);
+			   re += compress((bool *)(b->column[i]), buf);
 			   break;
 		   case 's':
-			   re += compress((char **)(b.column[i]), buf);
+			   re += compress((char **)(b->column[i]), buf);
 			   break;
 		}
 	}

@@ -32,10 +32,10 @@ uint32_t Skiplist::search(const uint64_t &key) {
 	return -1;
 }
 void Skiplist::insert(const uint64_t &key,const uint32_t &value) {
-	uint32_t level = randomlevel();
-	if (level > this->level) {
-		level = ++this->level;
-		cur[level] = 0;
+	uint32_t rlevel = randomlevel();
+	if (rlevel > level) {
+		rlevel = ++level;
+		cur[rlevel] = 0;
 	}
 	uint32_t addr = NewNode();
 	Node *newNode = &mem[addr];
@@ -49,7 +49,7 @@ void Skiplist::insert(const uint64_t &key,const uint32_t &value) {
 }
 void Skiplist::clear(const uint64_t &key) {
 		//bottom = (bottom+(SIZE >> 1)-1) % (SIZE - 1) + 1;
-	Node *x = header, *xp;
+	Node *x = header;
 	for(int32_t i = level-1; i >= 0; --i) {
 		while(x->forward[i] != SIZE && mem[x->forward[i]].key <= key)
 			x = &mem[x->forward[i]];

@@ -1,15 +1,15 @@
 #include "disk.h"
 namespace simpledb {
 Disk::Disk() {
-	Tree *tree = new Tree(this);
+	tree = new Tree(this);
 	index.open("index", std::fstream::binary | std::fstream::in | std::fstream::out);
-	char *sd = "datax";
+	char sd[6] = "datax";
 	for(size_t i = 0; i < 0x8; ++i) {
 		sd[4] = i%10 + '0';
 		data[i].open(sd, std::fstream::binary | std::fstream::in | std::fstream::out);
 	}
 	dp = 0;
-	tail = 0;
+	//tail = 0;
 	index.seekg(0, index.end);
 	size_t filesize = index.tellg();
 	cache = new std::pair<addr_t, Node>[cachesize];
@@ -82,12 +82,12 @@ Node *Disk::search(addr_t addr, bool change) {
 	c_using[offset] = true;
 	return &(cache[offset].second);
 }
-void Disk::add_data(uint32_t slen, uint64_t keys[ADD_SIZE], uint32_t lens[ADD_SIZE], char *buf) {
+void Disk::add_data(uint32_t slen, uint64_t keys[BUILDSIZE], uint32_t lens[BUILDSIZE], char *buf) {
 	uint32_t offset =  (dp << 29) | data[dp].tellp();
-	for(uint32_t i = 0; i < ADD_SIZE; ++i)
+	for(uint32_t i = 0; i < BUILDSIZE; ++i)
 		lens[i] += offset;
 	addr_t gen = tree->build(keys, lens);
-	merge(&initroot, gen, keys[0]);
+	merge(initroot, gen, keys[0]);
 	data[dp].write(buf, slen);
 	if (++count == 0x40) {
 		count = 0;
@@ -118,16 +118,16 @@ void Disk::add_data(uint32_t slen, uint64_t keys[ADD_SIZE], uint32_t lens[ADD_SI
 	*/
 	return;
 }
-void Disk::search_data(uint64_t key, char *buf) {
-	addr_t addr = find(&initroot, key);
+void Disk::search_data(uint64_t &key, char *buf) {
+	addr_t addr = find(initroot, key);
 	uint32_t tdp = (addr >> 29) & 0x7;
 	addr = addr & 0x1fffffff;
 	data[tdp].seekg(addr, data[tdp].beg);
-	size_t size;
+	uint32_t size;
 	data[tdp] >> size;
 	data[tdp].read(buf, size);
 }
-addr_t Disk::find(rootNode &root, uint64_t key) {
+addr_t Disk::find(rootNode &root, uint64_t &key) {
 	if (root.key > key) {
 		if (root.nextNode == 0)
 			return -1;
@@ -151,7 +151,7 @@ void Disk::merge(rootNode &root, addr_t rot, uint64_t key) {
 			root.nextNode = index.tellp();
 			index.write((char *)&nextroot, sizeof(rootNode));
 		}
-		merge(nextroot, root.rot);
+		merge(nextroot, root.rot, root.key);
 		root.rot = 0;
 		root.cpt = 0;
 		root.key = key;

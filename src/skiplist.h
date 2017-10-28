@@ -16,7 +16,7 @@ class Skiplist {
 			uint32_t forward[MAX_LEVEL];
 		}mem[SIZE], *header;
 		uint32_t cur[MAX_LEVEL];
-		int32_t level, head, bottom;
+		uint32_t level, head, bottom;
 		std::default_random_engine rand;
 		std::random_device rd;
 		uint32_t NewNode();

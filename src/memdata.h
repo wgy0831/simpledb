@@ -20,16 +20,16 @@ class Memmanager {
 		uint32_t count;
 		uint32_t head, bottom;
 		Skiplist list;
-		void compress(const double arr[], char *buf);
-		void compress(const uint64_t arr[], char *buf);
-		void compress(const bool arr[], char *buf);
-		void compress(const char *arr[], char *buf);
-		void compressblock(const Block *b, char *buf);
+		uint32_t compress(const double arr[], char *&buf);
+		uint32_t compress(const uint64_t arr[], char *&buf);
+		uint32_t compress(const bool arr[], char *&buf);
+		uint32_t compress(char *arr[], char *&buf);
+		uint32_t compressblock(const Block *b, char *buf);
 	public:
 		Memmanager(const uint32_t &argc, const char *s);
 		~Memmanager();
-		Block *search(const uint32_t &timestamp, uint32_t &addr);
-		void insert(const uint32_t &timestamp, ...);
+		Block *search(const uint64_t &timestamp, uint32_t &addr);
+		void insert(const uint64_t &timestamp, ...);
 		void update();
 };
 }

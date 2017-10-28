@@ -3,6 +3,7 @@
 #include <cstdint>
 namespace simpledb {
 const uint32_t M = 4;
+const uint32_t BUILDSIZE = 0x400000;//4^11
 struct Node {
 	uint32_t high;
 	uint64_t keys[M];
