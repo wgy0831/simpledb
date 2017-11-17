@@ -2,7 +2,7 @@
 
 namespace simpledb {
 Skiplist::Skiplist():rand(rd()) {
-	level = 0;
+	level = MAX_LEVEL;
 	head = 1;
 	bottom = 1;
 	header = &mem[0];
@@ -11,11 +11,13 @@ Skiplist::Skiplist():rand(rd()) {
 		header->forward[i] = SIZE;
 		cur[i] = 0;
 	}
+	for(uint32_t i = 0; i < SIZE; ++i) {
+		mem[i].level = randomlevel();
+		mem[i].forward = new int[mem[i].level];
+	}
 }
 uint32_t Skiplist::NewNode() {
-	uint32_t re = head%(SIZE-1)+1;
-	head = re;
-	return re;
+	return head = head%(SIZE-1)+1;
 }
 uint32_t Skiplist::randomlevel() {
 	uint32_t level = 0;
@@ -32,16 +34,18 @@ uint32_t Skiplist::search(const uint64_t &key) {
 	return -1;
 }
 void Skiplist::insert(const uint64_t &key,const uint32_t &value) {
-	uint32_t rlevel = randomlevel();
-	if (rlevel > level) {
+	//uint32_t rlevel = randomlevel();
+	/*if (rlevel > level) {
 		rlevel = ++level;
 		cur[rlevel] = 0;
 	}
+	*/
 	uint32_t addr = NewNode();
 	Node *newNode = &mem[addr];
 	newNode->key = key;
 	newNode->value = value;
-	for(uint32_t i = 0; i < level; ++i) {
+	char &level = newNode->level;
+	for(char i = 0; i < level; ++i) {
 		mem[cur[i]].forward[i] = addr;
 		newNode->forward[i] = SIZE;
 		cur[i] = addr;
@@ -66,5 +70,9 @@ uint32_t Skiplist::getfirstkey() {
 	if (header->forward[0] != SIZE)
 		return mem[header->forward[0]].key;
 	else return 0;
+}
+Skiplist::~Skiplist() {
+	for(uint32_t i = 0; i < SIZE; ++i)
+		delete [] mem[i].forward;
 }
 }

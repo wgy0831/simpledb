@@ -9,7 +9,7 @@
 #include <cstdint>
 namespace simpledb {
 const uint32_t cachesize = 0x100;
-const uint32_t MAX_BLOCK = 0x10000000;
+//const uint32_t MAX_BLOCK = 0x10000000;
 class Disk {
 	private:
 		struct rootNode {

@@ -1,0 +1,10 @@
+memdata:
+	depress
+	update
+
+cache:(just for disk data)
+	map the first key(key[0])
+	search entrance->memdata search->disk dearch->load
+
+the top structure
+

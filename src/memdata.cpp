@@ -7,6 +7,7 @@ Memmanager::Memmanager(const uint32_t &argc, const char *s) {
 	memcpy(Block::fmt, s, argc+1);
 	Block::blocksize = sizeof(Block) + sizeof(char *)*(argc-1);
 	data = (Block *)malloc(Block::blocksize * MAX_BLOCK);
+	writebuf = (char *)malloc(Block::blocksize * (MAX_BLOCK >> 2));
 	for(uint32_t i = 0; i < MAX_BLOCK; ++i) {
 		data[i].count = 0;
 		data[i].tail = 0;
@@ -68,6 +69,10 @@ void Memmanager::insert(const uint64_t &timestamp, ...) {
 	};
 	va_end(vl);
 }
+void Memmanager::expand(const char type, const char *buf, char *arr) {
+	switch (type) {
+		case 'd':
+
 uint32_t Memmanager::compress(const double arr[], char *&buf) {
 	char *beg = buf;
 	double stage = arr[0];
@@ -136,7 +141,7 @@ uint32_t Memmanager::compress(const bool arr[], char *&buf) {
 		if (arr[i])
 			*buf = *buf & (1 << p);
 		++p;
-		if (p == 31) {
+		if (p == 8) {
 			p = 0;
 			++buf;
 		}
@@ -175,5 +180,6 @@ uint32_t Memmanager::compressblock(const Block *b, char *buf) {
 	return re;
 }
 void Memmanager::update() {
+	//compress BUILDSIZE blocks into writebuf
 }
 }

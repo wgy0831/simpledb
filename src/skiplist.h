@@ -6,14 +6,15 @@
 #include <cstddef>
 
 namespace simpledb {
-const uint32_t MAX_LEVEL = 12;
-const uint32_t SIZE = 0x800001;
+const uint32_t MAX_LEVEL = 8;
+const uint32_t SIZE = 0x2000001;
 class Skiplist {
 	private:
 		struct Node{
 			uint64_t key;
 			uint32_t value;
-			uint32_t forward[MAX_LEVEL];
+			char level;
+			uint32_t *forward;
 		}mem[SIZE], *header;
 		uint32_t cur[MAX_LEVEL];
 		uint32_t level, head, bottom;
@@ -27,6 +28,7 @@ class Skiplist {
 		uint32_t search(const uint64_t &key);
 		void insert(const uint64_t &key, const uint32_t &value);
 		void clear(const uint64_t &key);
+		~Skiplist();
 };
 }
 
