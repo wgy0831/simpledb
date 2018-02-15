@@ -8,3 +8,9 @@ cache:(just for disk data)
 
 the top structure
 
+target:
+Throughput
+depth
+average finding count
+
+lstm b+ 

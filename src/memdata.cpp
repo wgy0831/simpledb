@@ -69,9 +69,28 @@ void Memmanager::insert(const uint64_t &timestamp, ...) {
 	};
 	va_end(vl);
 }
-void Memmanager::expand(const char type, const char *buf, char *arr) {
+void Memmanager::expand(const char type, const char *buf, void *arr) {
+	uint64_t *inarr;
+	double *doarr;
+	bool *boarr;
+	int16_t delta;
+	bool f = false;
 	switch (type) {
 		case 'd':
+			inarr = (uint64_t *)arr;
+			inarr[0] = ((uint64_t *)buf)[0];
+			buf += sizeof(uint64_t);
+			delta = ((int16_t *)buf)[0];
+			buf += sizeof(int16_t);
+			for(size_t i = 1; i M BLOCK_SIZE; ++i) {
+				int64_t dbd = 0;
+				inarr[i] = inarr[i-1] + delta + dbd;
+			}
+
+
+
+	}
+}
 
 uint32_t Memmanager::compress(const double arr[], char *&buf) {
 	char *beg = buf;

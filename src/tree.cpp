@@ -23,8 +23,10 @@ void Tree::fill(addr_t &rn, uint32_t &n, const uint32_t &maxh) {
 			++cpt;
 			if (n == 0) return;
 			if (cpt == M) {
-				if (r->high < maxh)
+				if (r->high < maxh) {
 					gethigher(rn, r);
+					cpt = 1;
+				}
 				else return;
 			}
 			r->keys[cpt] = *(this->keys);
@@ -43,6 +45,7 @@ void Tree::fill(addr_t &rn, uint32_t &n, const uint32_t &maxh) {
 			if(maxh > 1) {
 				gethigher(rn, r);
 				r->keys[1] = *(this->keys);
+				cpt = 1;
 			}
 			else return;
 		}
@@ -93,7 +96,8 @@ void Tree::add(addr_t &root, addr_t child, uint32_t &cpt) {
 		++cpt;
 	}
 	disk->release(root);
-	disk->release(child);
+	if (root != child)
+		disk->release(child);
 }
 }
 /*

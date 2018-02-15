@@ -1,0 +1,239 @@
+#include "disk.h"
+namespace simpledb {
+Disk::Disk() {
+	tree = new Tree(this);
+	index = fopen("index","wb+");
+	//index.open("index", std::fstream::binary | std::fstream::in | std::fstream::out);
+	/*
+	char sd[6] = "datax";
+	for(size_t i = 0; i < 0x8; ++i) {
+		sd[4] = i%10 + '0';
+		data[i].open(sd, std::fstream::binary | std::fstream::in | std::fstream::out);
+	}
+	*/
+	dp = 0;
+	//tail = 0;
+	//index.seekg(0, index.end);
+	fseek(index, 0, SEEK_END);
+	size_t filesize = ftell(index);
+	cache = new std::pair<addr_t, Node>[cachesize];
+	c_using = new bool[cachesize];
+	dirty = new bool[cachesize];
+	memset(c_using, 0, sizeof(bool)*cachesize);
+	memset(dirty, 0, sizeof(bool)*cachesize);
+	memset(cache, 0, sizeof(std::pair<addr_t, Node>)*cachesize);
+	cp = 0;
+	if (filesize == 0) {
+		initroot.cpt = initroot.rot = initroot.nextNode = 0;
+		initroot.key = -1;
+		do {
+			fseek(index, 0, SEEK_SET);
+		}
+		while (fwrite((void *)&initroot, sizeof(rootNode), 1, index) != sizeof(rootNode));
+		//fflush(index);
+		//index.write((char *)&initroot, sizeof(rootNode));
+		return;
+	}
+	//index.seekg(0, index.beg);
+	fseek(index, 0, SEEK_SET);
+	//index.read((char *)&initroot, sizeof(rootNode));
+	fread((void *)&initroot, sizeof(rootNode), 1, index);
+	//fflush(index);
+}
+void Disk::release(addr_t addr) {
+	c_using[diskmap[addr]] = false;
+}
+uint32_t Disk::nextpos() {
+	uint32_t ocp = cp;
+	while (c_using[cp]) {
+		cp = (cp+1)%cachesize;
+		if (ocp == cp) {
+			printf("disk cache full!");
+			for(;;);
+		}
+	}
+	if (dirty[cp]) {
+		//addr_t ar = diskmap[cache[cp].first]; 
+		//index.seekp(ar, index.beg);
+		do {
+		fseek(index, cache[cp].first, SEEK_SET);
+		//index.write((char *)&(cache[cp].second), sizeof(Node));
+		}while(fwrite((void *)&(cache[cp].second), sizeof(Node), 1, index) != sizeof(Node));
+		//fflush(index);
+	}
+	if (cache[cp].first != 0)
+		diskmap.erase(cache[cp].first);
+	return cp;
+}
+
+Node *Disk::newNode(addr_t &addr) {
+	//index.seekp(0, index.end);
+	fseek(index, 0, SEEK_END);
+	//addr = index.tellp();
+	addr = ftell(index);
+	//printf("addr:%d\n", addr);
+	uint32_t offset = nextpos();
+	diskmap[addr] = offset;
+	cache[offset].first = addr;
+	c_using[offset] = true;
+	dirty[offset] = true;
+	Node *result = &(cache[offset].second);
+	memset(result, 0, sizeof(Node));
+	uint32_t after;
+	do {
+	//index.write((char *)result, sizeof(Node));
+		fseek(index, 0, SEEK_END);
+	}
+	while(fwrite((void *)result, sizeof(Node), 1, index) != sizeof(Node));
+	//fflush(index);
+		//after = ftell(index);
+	//}while(after == addr);
+	return result;
+}
+
+Node *Disk::search(addr_t addr, bool change) {
+	if (addr == 0) return NULL;
+	auto it = diskmap.find(addr);
+	uint32_t offset;
+	if (it != diskmap.end()) {
+		offset = it->second;
+		assert(cache[offset].first == addr);
+	}
+	else {
+		offset = nextpos();
+		diskmap[addr] = offset;
+		cache[offset].first = addr;
+		//index.seekg(addr, index.beg);
+		fseek(index, addr, SEEK_SET);
+		//index.read((char *)&(cache[offset].second), sizeof(Node));
+		fread((void *)&(cache[offset].second), sizeof(Node), 1, index);
+		dirty[offset] = false;
+		//fflush(index);
+	}
+	if (change) dirty[offset] = true;
+	c_using[offset] = true;
+	return &(cache[offset].second);
+}
+void Disk::add_data(uint64_t keys[BUILDSIZE], uint32_t values[BUILDSIZE]) {
+	/*
+	uint32_t offset =  (dp << 29) | data[dp].tellp();
+	for(uint32_t i = 0; i < BUILDSIZE; ++i)
+		lens[i] += offset;
+		*/
+	addr_t gen = tree->build(keys, values);
+	merge(initroot, gen, keys[0]);
+	/*
+	data[dp].write(buf, slen);
+	if (++count == 0x40) {
+		count = 0;
+		++dp;
+	}
+	if (tail + n > MAX_BLOCK) {
+		size_t fill = MAX_BLOCK - tail;
+		data[dp].write(buf, addr[fill - 1]);
+		addr[0] = (dp << 28) | offset;
+		for(size_t i = 1; i < fill; ++i)
+			addr[i] = (dp << 28) | (addr[i-1] + offset);
+		++dp;
+		tail = 0;
+		n -= fill;
+		buf += addr[fill - 1];
+		addr += fill;
+		offset = 0;
+	}
+	data[dp].write(buf, addr[n-1]);
+	addr[0] = (dp << 28) | offset;
+	for(size_t i = 1; i < n; ++i)
+		addr[i] = (dp << 28) | (addr[i-1] + offset);
+	if (tail == MAX_BLOCK) {
+		++dp;
+		tail = 0;
+	}
+	*/
+	return;
+}
+void Disk::search_data(uint64_t &key, uint32_t &buf) {
+	buf = find(initroot, key);
+	/*
+	addr_t addr = find(initroot, key);
+	uint32_t tdp = (addr >> 29) & 0x7;
+	addr = addr & 0x1fffffff;
+	data[tdp].seekg(addr, data[tdp].beg);
+	uint32_t size;
+	data[tdp] >> size;
+	data[tdp].read(buf, size);
+	*/
+}
+addr_t Disk::find(rootNode &root, uint64_t &key) {
+	if (root.key > key) {
+		if (root.nextNode == 0)
+			return -1;
+		rootNode nextroot;
+		//index.seekg(root.nextNode, index.beg);
+		fseek(index, root.nextNode, SEEK_SET);
+		//index.read((char *)&nextroot, sizeof(rootNode));
+		fread((void *)&nextroot, sizeof(rootNode), 1, index);
+		//fflush(index);
+		return find(nextroot, key);
+	}
+	return tree->searchNode(root.rot, key, root.cpt);
+}
+		
+void Disk::merge(rootNode &root, addr_t rot, int64_t key) {
+	if (key == -1) return;
+	if (root.cpt == M) {
+		rootNode nextroot;
+		if (root.nextNode != 0) {
+			//index.seekg(root.nextNode, index.beg);
+			fseek(index, root.nextNode, SEEK_SET);
+			//index.read((char *)&nextroot, sizeof(rootNode));
+			fread((void *)&nextroot, sizeof(rootNode), 1, index);
+			//fflush(index);
+		}
+		else {
+			//index.seekp(0, index.end);
+			do {
+			fseek(index, 0, SEEK_END);
+			//root.nextNode = index.tellp();
+			root.nextNode = ftell(index);
+			//index.write((char *)&nextroot, sizeof(rootNode));
+			}
+			while(fwrite((void *)&nextroot, sizeof(rootNode), 1, index) != sizeof(rootNode));
+			//fflush(index);
+		}
+		merge(nextroot, root.rot, root.key);
+		do {
+		fseek(index, root.nextNode, SEEK_SET);
+		}
+		while(fwrite((void *)&nextroot, sizeof(rootNode), 1, index) != sizeof(rootNode));
+		root.rot = 0;
+		root.cpt = 0;
+		root.key = key;
+	}
+	if (root.key == -1) root.key = key;
+	tree->add(root.rot, rot, root.cpt);
+}
+Disk::~Disk() {
+	for(uint32_t i = 0; i < cachesize; ++i)
+		if (dirty[i]) {
+			//addr_t ar = diskmap[cache[i].first]; 
+			//index.seekp(ar, index.beg);
+			do {
+			fseek(index, cache[i].first, SEEK_SET);
+			}
+			//index.write((char *)&(cache[i].second), sizeof(Node));
+			while(fwrite((void *)&(cache[i].second), sizeof(Node), 1, index) != sizeof(Node));
+			//fflush(index);
+	}
+	delete [] cache;
+	delete [] c_using;
+	delete [] dirty;
+	diskmap.clear();
+	//index.close();
+	fclose(index);
+	/*
+	for(size_t i = 0; i < 0x1000; ++i)
+		data[i].close();
+		*/
+}
+}
